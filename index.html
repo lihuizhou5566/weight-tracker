@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>体重记录助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .chart-section {
+            flex: 2;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .input-section {
+            flex: 1;
+            background-color: white;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+        
+        .control-panel button {
+            padding: 8px 15px;
+            background-color: #e0e0e0;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .control-panel button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        select, input {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 100%;
+        }
+        
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        button.submit-btn {
+            padding: 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button.submit-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 16px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        
+        .export-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        @media (min-width: 768px) {
+            .container {
+                flex-direction: row;
+            }
+            
+            .chart-section {
+                flex: 2;
+                padding: 20px;
+            }
+            
+            .input-section {
+                flex: 1;
+                border-top-left-radius: 0;
+                border-bottom-left-radius: 20px;
+                padding: 30px;
+            }
+            
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="chart-section">
+            <div class="control-panel">
+                <button class="time-range active" data-range="7">7天</button>
+                <button class="time-range" data-range="30">30天</button>
+                <button class="time-range" data-range="60">60天</button>
+                <button class="time-range" data-range="180">180天</button>
+                <button class="time-range" data-range="365">365天</button>
+            </div>
+            
+            <div class="checkbox-group" id="weight-chart-options">
+                <label class="checkbox-item">
+                    <input type="checkbox" checked data-type="max"> 每日最高体重
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" checked data-type="min"> 每日最低体重
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" checked data-type="avg"> 每日平均体重
+                </label>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="weightChart"></canvas>
+            </div>
+            
+            <div class="checkbox-group" id="intake-chart-options">
+                <label class="checkbox-item">
+                    <input type="checkbox" checked data-type="intake"> 每日进食量
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" checked data-type="absorption"> 每日吸收量
+                </label>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="intakeChart"></canvas>
+            </div>
+            
+            <div class="checkbox-group" id="metabolism-chart-options">
+                <label class="checkbox-item">
+                    <input type="checkbox" checked data-type="metabolism"> 每日代谢量
+                </label>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="metabolismChart"></canvas>
+            </div>
+            
+            <button class="export-btn" id="exportBtn">导出数据为CSV</button>
+        </div>
+        
+        <div class="input-section">
+            <div class="input-form">
+                <select id="recordType">
+                    <option value="before_meal">饭前</option>
+                    <option value="after_meal">饭后</option>
+                    <option value="before_toilet">方便前</option>
+                    <option value="after_toilet">方便后</option>
+                    <option value="before_metabolism">代谢前</option>
+                    <option value="after_metabolism">代谢后</option>
+                    <option value="free">自由模式</option>
+                </select>
+                
+                <input type="number" id="weightInput" placeholder="输入体重 (kg)" step="0.1" min="0">
+                
+                <button class="submit-btn" id="submitBtn">记录体重</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast">记录成功！</div>
+    
+    <script>
+        // IndexedDB 初始化
+        let db;
+        
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('WeightTrackerDB', 3);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('weightRecords')) {
+                        const store = db.createObjectStore('weightRecords', { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('timestamp', 'timestamp');
+                        store.createIndex('date', 'date');
+                        store.createIndex('type', 'type');
+                    }
+                };
+                
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+                
+                request.onerror = (event) => {
+                    reject('无法打开数据库');
+                };
+            });
+        }
+        
+        // 添加记录
+        function addRecord(record) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['weightRecords'], 'readwrite');
+                const store = transaction.objectStore('weightRecords');
+                const request = store.add(record);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        // 获取所有记录
+        function getAllRecords() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['weightRecords'], 'readonly');
+                const store = transaction.objectStore('weightRecords');
+                const request = store.getAll();
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        // 获取日期范围内的记录
+        function getRecordsInRange(days) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['weightRecords'], 'readonly');
+                const store = transaction.objectStore('weightRecords');
+                const index = store.index('timestamp');
+                const now = new Date();
+                const past = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+                const range = IDBKeyRange.bound(past.getTime(), now.getTime());
+                const request = index.getAll(range);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        // 显示提示信息
+        function showToast(message) {
+            const toast = $('#toast');
+            toast.text(message).fadeIn();
+            setTimeout(() => toast.fadeOut(), 2000);
+        }
+        
+        // 自动纠错逻辑
+        function validateRecord(currentType, lastRecord) {
+            if (!lastRecord) return true;
+            
+            const typePairs = [
+                { current: 'after_meal', previous: 'before_meal', message: '您上一次记录的是"饭前"，现在记录"饭后"是正确的吗？' },
+                { current: 'before_meal', previous: 'after_meal', message: '您上一次记录的是"饭后"，现在记录"饭前"是正确的吗？' },
+                { current: 'after_toilet', previous: 'before_toilet', message: '您上一次记录的是"方便前"，现在记录"方便后"是正确的吗？' },
+                { current: 'before_toilet', previous: 'after_toilet', message: '您上一次记录的是"方便后"，现在记录"方便前"是正确的吗？' },
+                { current: 'after_metabolism', previous: 'before_metabolism', message: '您上一次记录的是"代谢前"，现在记录"代谢后"是正确的吗？' },
+                { current: 'before_metabolism', previous: 'after_metabolism', message: '您上一次记录的是"代谢后"，现在记录"代谢前"是正确的吗？' }
+            ];
+            
+            for (const pair of typePairs) {
+                if (currentType === pair.current && lastRecord.type === pair.previous) {
+                    return confirm(pair.message);
+                }
+            }
+            
+            return true;
+        }
+        
+        // 处理记录提交
+        async function handleSubmit() {
+            const type = $('#recordType').val();
+            const weight = parseFloat($('#weightInput').val());
+            
+            if (isNaN(weight) || weight <= 0) {
+                alert('请输入有效的体重值');
+                return;
+            }
+            
+            // 获取上一条记录用于自动纠错
+            const allRecords = await getAllRecords();
+            const lastRecord = allRecords.length > 0 ? allRecords[allRecords.length - 1] : null;
+            
+            if (!validateRecord(type, lastRecord)) {
+                return;
+            }
+            
+            const timestamp = new Date().getTime();
+            const dateStr = new Date().toISOString().split('T')[0];
+            
+            const record = {
+                timestamp,
+                date: dateStr,
+                type,
+                weight
+            };
+            
+            try {
+                await addRecord(record);
+                showToast('记录成功！');
+                $('#weightInput').val('');
+                updateCharts();
+            } catch (error) {
+                console.error('记录失败:', error);
+                alert('记录失败，请重试');
+            }
+        }
+        
+        // 计算每日统计数据
+        function calculateDailyStats(records) {
+            const dailyStats = {};
+            
+            records.forEach(record => {
+                const date = record.date;
+                
+                if (!dailyStats[date]) {
+                    dailyStats[date] = {
+                        date,
+                        records: [],
+                        max: -Infinity,
+                        min: Infinity,
+                        sum: 0,
+                        intake: 0,
+                        absorption: 0,
+                        metabolism: 0
+                    };
+                }
+                
+                const dayStats = dailyStats[date];
+                dayStats.records.push(record);
+                
+                // 更新最高和最低体重
+                if (record.weight > dayStats.max) dayStats.max = record.weight;
+                if (record.weight < dayStats.min) dayStats.min = record.weight;
+                dayStats.sum += record.weight;
+                
+                // 计算进食量和吸收量
+                if (record.type === 'before_meal' || record.type === 'after_meal') {
+                    const prevRecord = dayStats.records.find(r => 
+                        r.timestamp < record.timestamp && 
+                        (r.type === 'before_meal' || r.type === 'after_meal')
+                    );
+                    
+                    if (prevRecord) {
+                        if (record.type === 'after_meal' && prevRecord.type === 'before_meal') {
+                            dayStats.intake += record.weight - prevRecord.weight;
+                        }
+                    }
+                }
+                
+                if (record.type === 'before_toilet' || record.type === 'after_toilet') {
+                    const prevRecord = dayStats.records.find(r => 
+                        r.timestamp < record.timestamp && 
+                        (r.type === 'before_toilet' || r.type === 'after_toilet')
+                    );
+                    
+                    if (prevRecord) {
+                        if (record.type === 'after_toilet' && prevRecord.type === 'before_toilet') {
+                            dayStats.absorption += prevRecord.weight - record.weight;
+                        }
+                    }
+                }
+                
+                // 计算代谢量
+                if (record.type === 'before_metabolism' || record.type === 'after_metabolism') {
+                    const prevRecord = dayStats.records.find(r => 
+                        r.timestamp < record.timestamp && 
+                        (r.type === 'before_metabolism' || r.type === 'after_metabolism')
+                    );
+                    
+                    if (prevRecord) {
+                        if (record.type === 'after_metabolism' && prevRecord.type === 'before_metabolism') {
+                            dayStats.metabolism += prevRecord.weight - record.weight;
+                        }
+                    }
+                }
+            });
+            
+            // 计算平均值
+            Object.values(dailyStats).forEach(day => {
+                day.avg = day.sum / day.records.length;
+            });
+            
+            return Object.values(dailyStats).sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+        
+        // 准备图表数据
+        function prepareChartData(dailyStats, days) {
+            const labels = [];
+            const maxData = [];
+            const minData = [];
+            const avgData = [];
+            const intakeData = [];
+            const absorptionData = [];
+            const metabolismData = [];
+            
+            const endDate = new Date();
+            const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+            
+            // 确保有足够的数据点
+            let currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                const dayStats = dailyStats.find(day => day.date === dateStr);
+                
+                labels.push(dateStr);
+                
+                if (dayStats) {
+                    maxData.push(dayStats.max);
+                    minData.push(dayStats.min);
+                    avgData.push(parseFloat(dayStats.avg.toFixed(2)));
+                    intakeData.push(parseFloat(dayStats.intake.toFixed(2)));
+                    absorptionData.push(parseFloat(dayStats.absorption.toFixed(2)));
+                    metabolismData.push(parseFloat(dayStats.metabolism.toFixed(2)));
+                } else {
+                    maxData.push(null);
+                    minData.push(null);
+                    avgData.push(null);
+                    intakeData.push(null);
+                    absorptionData.push(null);
+                    metabolismData.push(null);
+                }
+                
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            return {
+                labels,
+                datasets: {
+                    max: maxData,
+                    min: minData,
+                    avg: avgData,
+                    intake: intakeData,
+                    absorption: absorptionData,
+                    metabolism: metabolismData
+                }
+            };
+        }
+        
+        // 更新所有图表
+        async function updateCharts() {
+            const days = parseInt($('.time-range.active').data('range'));
+            const records = await getRecordsInRange(days);
+            const dailyStats = calculateDailyStats(records);
+            const chartData = prepareChartData(dailyStats, days);
+            
+            // 更新体重图表
+            updateChart(
+                'weightChart', 
+                chartData.labels, 
+                [
+                    { label: '最高体重', data: chartData.datasets.max, hidden: !$('#weight-chart-options input[data-type="max"]').prop('checked') },
+                    { label: '最低体重', data: chartData.datasets.min, hidden: !$('#weight-chart-options input[data-type="min"]').prop('checked') },
+                    { label: '平均体重', data: chartData.datasets.avg, hidden: !$('#weight-chart-options input[data-type="avg"]').prop('checked') }
+                ],
+                '体重 (kg)'
+            );
+            
+            // 更新进食图表
+            updateChart(
+                'intakeChart', 
+                chartData.labels, 
+                [
+                    { label: '进食量', data: chartData.datasets.intake, hidden: !$('#intake-chart-options input[data-type="intake"]').prop('checked') },
+                    { label: '吸收量', data: chartData.datasets.absorption, hidden: !$('#intake-chart-options input[data-type="absorption"]').prop('checked') }
+                ],
+                '量 (kg)'
+            );
+            
+            // 更新代谢图表
+            updateChart(
+                'metabolismChart', 
+                chartData.labels, 
+                [
+                    { label: '代谢量', data: chartData.datasets.metabolism, hidden: !$('#metabolism-chart-options input[data-type="metabolism"]').prop('checked') }
+                ],
+                '代谢量 (kg)'
+            );
+        }
+        
+        // 更新单个图表
+        function updateChart(chartId, labels, datasets, yLabel) {
+            const ctx = document.getElementById(chartId).getContext('2d');
+            let chart = Chart.getChart(ctx);
+            
+            const chartData = {
+                labels: labels,
+                datasets: datasets.map(dataset => ({
+                    label: dataset.label,
+                    data: dataset.data,
+                    borderColor: getRandomColor(),
+                    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: true,
+                    hidden: dataset.hidden
+                }))
+            };
+            
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: yLabel
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.parsed.y !== null ? context.parsed.y.toFixed(2) : '无数据';
+                                return `${label}: ${value} ${yLabel.includes('代谢量') ? 'kg' : yLabel.includes('量') ? 'kg' : 'kg'}`;
+                            }
+                        }
+                    }
+                }
+            };
+            
+            if (chart) {
+                chart.data = chartData;
+                chart.options = options;
+                chart.update();
+            } else {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: options
+                });
+            }
+        }
+        
+        // 生成随机颜色
+        function getRandomColor() {
+            const colors = [
+                'rgba(75, 192, 192, 1)',
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)',
+                'rgba(199, 199, 199, 1)',
+                'rgba(255, 99, 255, 1)'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // 导出CSV
+        async function exportToCSV() {
+            const records = await getAllRecords();
+            if (records.length === 0) {
+                alert('没有可导出的数据');
+                return;
+            }
+            
+            // 按日期排序
+            records.sort((a, b) => a.timestamp - b.timestamp);
+            
+            // 创建CSV内容
+            let csvContent = "日期,时间,类型,体重(kg)\n";
+            
+            records.forEach(record => {
+                const date = new Date(record.timestamp);
+                const dateStr = date.toISOString().split('T')[0];
+                const timeStr = date.toTimeString().split(' ')[0];
+                
+                let typeText = '';
+                switch (record.type) {
+                    case 'before_meal': typeText = '饭前'; break;
+                    case 'after_meal': typeText = '饭后'; break;
+                    case 'before_toilet': typeText = '方便前'; break;
+                    case 'after_toilet': typeText = '方便后'; break;
+                    case 'before_metabolism': typeText = '代谢前'; break;
+                    case 'after_metabolism': typeText = '代谢后'; break;
+                    case 'free': typeText = '自由模式'; break;
+                }
+                
+                csvContent += `${dateStr},${timeStr},${typeText},${record.weight}\n`;
+            });
+            
+            // 创建下载链接
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `体重记录_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('数据导出成功！');
+        }
+        
+        // 初始化应用
+        $(document).ready(async function() {
+            try {
+                await initDB();
+                
+                // 事件监听
+                $('#submitBtn').on('click', handleSubmit);
+                
+                $('.time-range').on('click', function() {
+                    $('.time-range').removeClass('active');
+                    $(this).addClass('active');
+                    updateCharts();
+                });
+                
+                $('#weight-chart-options input, #intake-chart-options input, #metabolism-chart-options input').on('change', updateCharts);
+                
+                $('#exportBtn').on('click', exportToCSV);
+                
+                // 初始加载图表
+                updateCharts();
+            } catch (error) {
+                console.error('初始化失败:', error);
+                alert('应用初始化失败，请刷新重试');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -15,7 +15,6 @@
         }
         
         body {
-            background-color: #f5f5f5;
             color: #333;
             max-width: 100%;
             overflow-x: hidden;
@@ -34,7 +33,6 @@
         }
         
         .input-section {
-            flex: 1;
             background-color: white;
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
@@ -54,14 +52,14 @@
             padding: 8px 15px;
             background-color: #e0e0e0;
             border: none;
-            border-radius: 20px;
+            border-radius: 5px;
             font-size: 14px;
             cursor: pointer;
             transition: all 0.3s;
         }
         
         .control-panel button.active {
-            background-color: #4CAF50;
+            background-color: #368288;
             color: white;
         }
         
@@ -69,10 +67,9 @@
             position: relative;
             height: 300px;
             margin-bottom: 20px;
-            background-color: white;
+            background-color: #edf5f5;
             border-radius: 10px;
             padding: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         
         .input-form {
@@ -85,8 +82,9 @@
             padding: 12px 15px;
             border: 1px solid #ddd;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             width: 100%;
+			background:#fff;
         }
         
         input[type="number"] {
@@ -101,20 +99,15 @@
         
         button.submit-btn {
             padding: 15px;
-            background-color: #4CAF50;
+            background-color: #368288;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        
-        button.submit-btn:hover {
-            background-color: #45a049;
-        }
-        
         .toast {
             position: fixed;
             top: 50%;
@@ -124,7 +117,7 @@
             color: white;
             padding: 15px 25px;
             border-radius: 25px;
-            font-size: 16px;
+            font-size: 14px;
             z-index: 1000;
             display: none;
         }
@@ -146,30 +139,38 @@
         .export-btn {
             width: 100%;
             padding: 12px;
-            background-color: #2196F3;
+            background-color: #368288;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             margin-top: 10px;
         }
-        
-        @media (min-width: 768px) {
-            .container {
-                flex-direction: row;
-            }
+        @media (max-width: 768px) {
             
+        }
+        @media (min-width: 768px) {
+            body{
+				padding:50px;
+				background:#cdf4f7;
+			}
+			.container {
+				background:#fff;
+				border-radius:20px;
+                flex-direction: row;
+				overflow:hidden;
+            }            
             .chart-section {
                 flex: 2;
                 padding: 20px;
             }
             
             .input-section {
-                flex: 1;
                 border-top-left-radius: 0;
                 border-bottom-left-radius: 20px;
                 padding: 30px;
+				border-left: 1px solid #eee;
             }
             
             .chart-container {
